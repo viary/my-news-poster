@@ -18,14 +18,7 @@ body {padding: 20px; background: #f0f2f5; text-align: center; font-family: "微�
 <script>
 // ============== 核心配置区（你可以修改这里）==============
 // 请按顺序尝试以下API配置，如果第一个失败，会自动尝试下一个
-const API_CONFIGS = [
-    // 配置1：主用代理（api.allorigins.win）
-    "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json"),
-    // 配置2：备用代理1 (corsproxy.io)
-    "https://corsproxy.io/?" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json"),
-    // 配置3：备用代理2 (thingproxy)
-    "https://thingproxy.freeboard.io/fetch/" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json")
-];
+const API = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json");
 const POSTER_WIDTH = 600;
 const QR_CODE_URL = "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/6e7c8bac9ce44f26afbdd7309f177e80.jpg~tplv-a9rns2rl98-image.png?lk3s=8e244e95&rcl=20260129180926FE4C25A7E6A18D2AD46D&rrcfp=dafada99&x-expires=2085905366&x-signature=R%2F5jUzV3W8Bx0lfQ60RO1qkAF%2FA%3D";
 const QR_SIZE = 80;
@@ -305,3 +298,4 @@ run();
 </script>
 </body>
 </html>
+
