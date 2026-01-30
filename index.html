@@ -17,7 +17,7 @@ body {padding: 20px; background: #f0f2f5; text-align: center; font-family: "微�
 
 <script>
 // ########## 核心配置（已修改为最优方案） ##########
-const API = "/api/zaobao"; // ✅ 关键修改：指向你自己的Vercel代理接口
+const API = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json"); // ✅ 关键修改：指向你自己的Vercel代理接口
 const POSTER_WIDTH = 600;
 const QR_CODE_URL = "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/6e7c8bac9ce44f26afbdd7309f177e80.jpg~tplv-a9rns2rl98-image.png?lk3s=8e244e95&rcl=20260129180926FE4C25A7E6A18D2AD46D&rrcfp=dafada99&x-expires=2085905366&x-signature=R%2F5jUzV3W8Bx0lfQ60RO1qkAF%2FA%3D";
 const QR_SIZE = 80;
@@ -230,4 +230,5 @@ function getWeek(dateStr) {
 run();
 </script>
 </body>
+
 </html>
