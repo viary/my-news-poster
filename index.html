@@ -2,411 +2,572 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>资源鉴・60秒资讯简报</title>
 <style>
-body {padding: 20px; background: #f0f2f5; text-align: center; font-family: "微软雅黑", sans-serif;}
-#posterContainer {max-width: 620px; margin: 0 auto;}
-#posterImg {max-width: 100%; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12);}
-#stepTip {font-size: 16px; color: #666; margin: 20px 0;}
-.error {color: #e64340;}
-.loading {display: inline-block; width: 20px; height: 20px; border: 2px solid #e0e0e0; border-top: 2px solid #367efc; border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px;}
-@keyframes spin {0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);}}
+/* 保持原有样式不变 */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { padding: 10px; background: #f0f2f5; font-family: "微软雅黑", sans-serif; }
+.container { max-width: 600px; margin: 0 auto; }
+.poster { width: 100%; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+.loading { text-align: center; padding: 40px 0; color: #666; }
+.loading-spinner { display: inline-block; width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #367efc; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.error { color: #e64340; text-align: center; padding: 20px; }
+.refresh-btn { display: block; margin: 20px auto; padding: 10px 25px; background: #367efc; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; }
+.status { text-align: center; margin: 15px 0; font-size: 14px; color: #666; }
 </style>
 </head>
 <body>
-<div id="stepTip"></div>
-<div id="posterContainer"></div>
+<div class="container">
+    <div id="status" class="status"></div>
+    <div id="posterContainer"></div>
+    <div id="loading" class="loading">
+        <div class="loading-spinner"></div>
+        <div>正在加载最新资讯...</div>
+    </div>
+    <div id="error" class="error" style="display:none;"></div>
+    <button id="refreshBtn" class="refresh-btn" onclick="location.reload()" style="display:none;">刷新重试</button>
+</div>
 
 <script>
-// *************** 【核心配置】***************
-// const API = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json");
-// 备用API（如果上面的不行可以试试这个）
-const API = "https://corsproxy.io/?" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json");
-
-// 二维码配置 - 这里使用多个备用选项
-const QR_OPTIONS = [
-    "https://corsproxy.io/?" + encodeURIComponent("https://s41.ax1x.com/2026/01/30/pZhPaqA.jpg"),
-    "pZhPaqA.jpg", // 相对路径（如果图片在同一个目录）
-    "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=400&h=400&fit=crop", // 备用占位图
-    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 24 24'%3E%3Cpath fill='%23367efc' d='M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2m0 2v12h16V6H4m3 3h10v10H7V9z'/%3E%3C/svg%3E"
-];
-// ************************************************************************
-
-const POSTER_WIDTH = 600;
-const QR_SIZE = 80;
-const REFRESH_HOUR = 6;
-const CACHE_KEY = "newsBriefCache_Final";
-
-const COLORS = { primary: "#367efc", primaryLight: "#5a95ff", secondary: "#6c8ebf", textMain: "#2d3748", textSub: "#718096", textLight: "#a0aec0", bgMain: "#ffffff", bgSub: "#f8f9fa", border: "#e2e8f0", splitLine: "#e8f0fe" };
-
-const stepTip = document.getElementById("stepTip");
-const posterContainer = document.getElementById("posterContainer");
-
-// 缓存函数
-function needRefreshFromApi() {
-    const cacheData = localStorage.getItem(CACHE_KEY);
-    if (!cacheData) return true;
-    try {
-        const { cacheTime } = JSON.parse(cacheData);
-        const now = new Date();
-        const cacheDate = new Date(cacheTime);
-        const todayRefreshTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), REFRESH_HOUR, 0, 0);
-        return (now >= todayRefreshTime && cacheDate < todayRefreshTime);
-    } catch {
-        return true;
-    }
-}
-
-function getCacheData() {
-    const cacheData = localStorage.getItem(CACHE_KEY);
-    return cacheData ? JSON.parse(cacheData).data : null;
-}
-
-function setCacheData(data) {
-    const cacheContent = { cacheTime: new Date().toISOString(), data };
-    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheContent));
-}
-
-// 改进的二维码加载函数
-async function loadQRImage() {
-    stepTip.innerHTML = '<span class="loading"></span>正在加载二维码...';
+// ==================== 配置区域 ====================
+const CONFIG = {
+    // ========== 【核心修改】只保留原接口，优化代理 ==========
+    API_URL: "https://api.allorigins.win/get?url=" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json"),
     
-    // 尝试多个二维码源，直到一个成功
-    for (let i = 0; i < QR_OPTIONS.length; i++) {
-        try {
-            const qrUrl = QR_OPTIONS[i];
-            console.log(`尝试加载二维码源 ${i + 1}: ${qrUrl.substring(0, 50)}...`);
-            
-            const img = new Image();
-            
-            // 如果是相对路径，尝试添加时间戳避免缓存
-            if (qrUrl === "pZhPaqA.jpg") {
-                img.src = qrUrl + "?t=" + Date.now();
-            } else {
-                img.src = qrUrl;
-            }
-            
-            img.crossOrigin = "anonymous";
-            
-            // 等待图片加载完成
-            await new Promise((resolve, reject) => {
-                img.onload = () => {
-                    console.log(`二维码源 ${i + 1} 加载成功`);
-                    resolve(img);
-                };
-                img.onerror = () => {
-                    console.log(`二维码源 ${i + 1} 加载失败`);
-                    reject();
-                };
-                // 设置超时
-                setTimeout(() => reject(), 5000);
-            });
-            
-            return img;
-            
-        } catch (error) {
-            if (i === QR_OPTIONS.length - 1) {
-                console.error("所有二维码源都加载失败");
-                // 创建一个简单的二维码占位图
-                const canvas = document.createElement('canvas');
-                canvas.width = QR_SIZE;
-                canvas.height = QR_SIZE;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = COLORS.primary;
-                ctx.fillRect(0, 0, QR_SIZE, QR_SIZE);
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '10px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('QR', QR_SIZE/2, QR_SIZE/2);
-                
-                const img = new Image();
-                img.src = canvas.toDataURL();
-                return img;
-            }
-        }
+    // 备用方案：如果上面的不行，尝试这个（去掉一层包装）
+    // API_URL: "https://corsproxy.io/?" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json"),
+    
+    QR_CODE_URL: "pZhPaqA.jpg", // 改为相对路径
+    POSTER_WIDTH: 600,
+    REFRESH_HOUR: 6,
+    CACHE_KEY: "newsBriefCache_v3",
+    
+    COLORS: {
+        primary: "#367efc",
+        primaryLight: "#5a95ff",
+        textMain: "#2d3748",
+        textSub: "#718096",
+        bgMain: "#ffffff",
+        bgSub: "#f8f9fa"
     }
-}
+};
 
-// 数据获取函数
+// ==================== 核心函数 ====================
+// 获取新闻数据 - 仅使用原接口
 async function fetchNewsData() {
-    // 优先使用缓存
-    if (!needRefreshFromApi()) {
-        const cached = getCacheData();
-        if (cached) {
-            console.log("使用缓存数据");
-            return cached;
-        }
+    // 1. 先检查缓存
+    const cached = getCacheData();
+    if (cached) {
+        console.log("使用缓存数据");
+        updateStatus("使用缓存数据");
+        return cached;
     }
-
+    
+    // 2. 从原接口获取
+    updateStatus("正在获取最新数据...");
+    
     try {
-        stepTip.innerHTML = '<span class="loading"></span>正在获取最新数据...';
-        console.log('请求地址:', API);
-        const response = await fetch(API);
+        console.log('请求地址:', CONFIG.API_URL);
+        
+        // 添加超时控制
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        
+        const response = await fetch(CONFIG.API_URL, {
+            signal: controller.signal,
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (compatible; ResourceBrief/1.0)'
+            }
+        });
+        
+        clearTimeout(timeoutId);
+        
         console.log('响应状态:', response.status);
         
         if (!response.ok) {
-            throw new Error(`网络请求失败: ${response.status}`);
+            throw new Error(`HTTP ${response.status} - ${response.statusText}`);
         }
         
         const result = await response.json();
-        console.log('原始响应数据:', result);
+        console.log('API响应:', result);
         
-        // 解析数据
-        let finalData = result.data || result;
+        // ========== 关键：解析不同代理返回的格式 ==========
+        let finalData = null;
         
-        if (!finalData || !finalData.date) {
-            throw new Error("数据格式异常");
+        // 情况1：allorigins.win代理的格式
+        if (result.contents) {
+            try {
+                const parsed = JSON.parse(result.contents);
+                finalData = parsed.data || parsed;
+            } catch (e) {
+                console.error('解析contents失败:', e);
+                throw new Error('数据解析失败');
+            }
         }
+        // 情况2：直接返回的数据
+        else if (result.data || result.news) {
+            finalData = result.data || result;
+        }
+        // 情况3：其他格式
+        else {
+            // 尝试直接使用整个响应
+            finalData = result;
+        }
+        
+        // 验证数据格式
+        if (!finalData || !finalData.date) {
+            console.warn('数据格式异常，尝试提取:', finalData);
+            
+            // 尝试从可能的位置提取数据
+            if (Array.isArray(finalData)) {
+                finalData = {
+                    date: new Date().toISOString().split('T')[0],
+                    news: finalData.slice(0, 8),
+                    weiyu: "数据已更新"
+                };
+            } else {
+                throw new Error("数据格式不符合预期");
+            }
+        }
+        
+        // 确保news是数组
+        if (!Array.isArray(finalData.news)) {
+            if (typeof finalData.news === 'string') {
+                finalData.news = [finalData.news];
+            } else {
+                finalData.news = [];
+            }
+        }
+        
+        console.log('处理后的数据:', finalData);
         
         // 存入缓存
         setCacheData(finalData);
+        updateStatus("数据获取成功");
+        
         return finalData;
         
     } catch (error) {
-        console.error('获取数据失败，使用缓存或兜底:', error);
-        // 尝试返回缓存
-        const cached = getCacheData();
-        if (cached) return cached;
+        console.error('获取数据失败:', error);
         
-        // 无缓存则返回兜底数据
-        const today = new Date();
-        return {
-            date: `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`,
-            news: ['数据加载中，请稍后刷新。'],
-            weiyu: '耐心是所有智慧的基础。'
-        };
+        // 尝试使用兜底数据
+        const fallbackData = getFallbackData();
+        updateStatus("使用本地数据");
+        
+        // 也缓存兜底数据，避免频繁失败
+        setCacheData(fallbackData);
+        
+        return fallbackData;
     }
 }
 
-// 主流程
-async function run() {
+// ==================== 辅助函数 ====================
+function getCacheData() {
     try {
-        stepTip.innerHTML = '<span class="loading"></span>初始化...';
+        const cache = localStorage.getItem(CONFIG.CACHE_KEY);
+        if (!cache) return null;
         
-        // 并行加载二维码和新闻数据
-        const [qrImage, newsData] = await Promise.all([
-            loadQRImage(),
-            fetchNewsData()
+        const { data, timestamp } = JSON.parse(cache);
+        
+        // 检查是否今天的数据（6点后需要刷新）
+        const now = new Date();
+        const cacheDate = new Date(timestamp);
+        const refreshTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), CONFIG.REFRESH_HOUR, 0, 0);
+        
+        // 如果是今天6点前缓存的数据，并且现在在6点后，则刷新
+        if (now >= refreshTime && cacheDate < refreshTime) {
+            return null;
+        }
+        
+        // 数据过期时间（12小时）
+        if (Date.now() - timestamp > 12 * 60 * 60 * 1000) {
+            return null;
+        }
+        
+        return data;
+    } catch (e) {
+        console.warn('读取缓存失败:', e);
+        return null;
+    }
+}
+
+function setCacheData(data) {
+    try {
+        const cache = {
+            data,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(CONFIG.CACHE_KEY, JSON.stringify(cache));
+    } catch (e) {
+        console.warn('设置缓存失败:', e);
+    }
+}
+
+function getFallbackData() {
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    
+    // 返回一些示例数据
+    return {
+        date: dateStr,
+        news: [
+            '今日资讯正在更新中，请稍后刷新查看。',
+            '如持续无法加载，请检查网络连接。',
+            '建议在Wi-Fi环境下使用以获得更好体验。'
+        ],
+        weiyu: '每一刻的努力，都在为未来铺路。坚持终将收获美好。'
+    };
+}
+
+function updateStatus(text) {
+    const statusEl = document.getElementById("status");
+    if (statusEl) {
+        statusEl.textContent = text;
+    }
+}
+
+function showError(message) {
+    const loadingEl = document.getElementById("loading");
+    const errorEl = document.getElementById("error");
+    const refreshBtn = document.getElementById("refreshBtn");
+    
+    if (loadingEl) loadingEl.style.display = "none";
+    if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.style.display = "block";
+    }
+    if (refreshBtn) refreshBtn.style.display = "block";
+}
+
+// ==================== 图片加载 ====================
+function loadImage(url) {
+    return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        
+        // 如果是相对路径，确保能正确加载
+        let imgUrl = url;
+        if (url === "pZhPaqA.jpg") {
+            // 尝试多种方式加载
+            imgUrl = url + "?v=" + Date.now();
+        }
+        
+        img.src = imgUrl;
+        
+        img.onload = () => resolve(img);
+        img.onerror = () => {
+            console.warn('二维码加载失败，使用默认图片');
+            // 创建默认二维码
+            const canvas = document.createElement('canvas');
+            canvas.width = 80;
+            canvas.height = 80;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = CONFIG.COLORS.primary;
+            ctx.fillRect(0, 0, 80, 80);
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('资源鉴', 40, 35);
+            ctx.font = '12px Arial';
+            ctx.fillText('扫码关注', 40, 55);
+            const defaultImg = new Image();
+            defaultImg.src = canvas.toDataURL();
+            resolve(defaultImg);
+        };
+    });
+}
+
+// ==================== 海报生成 ====================
+async function generatePoster() {
+    const loadingEl = document.getElementById("loading");
+    const posterContainer = document.getElementById("posterContainer");
+    
+    try {
+        // 1. 并行获取数据和二维码
+        const [newsData, qrImage] = await Promise.all([
+            fetchNewsData(),
+            loadImage(CONFIG.QR_CODE_URL)
         ]);
         
-        console.log("使用的数据:", newsData);
+        // 2. 准备数据
+        const newsList = Array.isArray(newsData.news) ? 
+            newsData.news.map(item => item.replace(/^\d+[、.]\s*/, "").trim()) : 
+            [];
+        const weiyu = newsData.weiyu || "每日微语，启迪心灵";
         
-        stepTip.innerHTML = '<span class="loading"></span>生成海报...';
+        // 3. 创建画布
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
         
-        const { date, news, weiyu } = newsData;
-        const handleNews = news.map(item => item.replace(/^\d+、/, "").trim()).filter(Boolean);
-        const totalHeight = calculateExactHeight(handleNews, weiyu);
-        const canvas = document.createElement("canvas");
-        canvas.width = POSTER_WIDTH;
-        canvas.height = totalHeight;
-        const ctx = canvas.getContext("2d");
+        // 海报尺寸
+        const posterWidth = CONFIG.POSTER_WIDTH;
+        const posterHeight = calculatePosterHeight(newsList, weiyu, ctx);
         
-        drawPosterBackground(ctx, canvas.width, canvas.height);
-        drawModules(ctx, date, handleNews, weiyu, qrImage);
+        canvas.width = posterWidth;
+        canvas.height = posterHeight;
         
-        const posterUrl = canvas.toDataURL("image/png");
-        const img = document.createElement("img");
-        img.id = "posterImg";
-        img.src = posterUrl;
-        posterContainer.innerHTML = "";
+        // 4. 绘制海报
+        drawPoster(ctx, newsData.date, newsList, weiyu, qrImage, posterWidth, posterHeight);
+        
+        // 5. 显示海报
+        const img = document.createElement('img');
+        img.className = 'poster';
+        img.src = canvas.toDataURL('image/png');
+        img.alt = '资源鉴60秒资讯简报';
+        
+        posterContainer.innerHTML = '';
         posterContainer.appendChild(img);
-        stepTip.style.display = "none";
+        
+        // 隐藏加载状态
+        if (loadingEl) loadingEl.style.display = "none";
+        
+        updateStatus("生成时间: " + new Date().toLocaleTimeString());
         
     } catch (error) {
-        stepTip.innerHTML = `<span class="error">❌ 生成失败：${error.message}</span><br>
-                            <button onclick="location.reload()" style="margin-top:10px; padding:8px 20px; background:#367efc; color:white; border:none; border-radius:4px; cursor:pointer;">
-                                点击重试
-                            </button>`;
-        console.error("运行时错误:", error);
+        console.error('生成海报失败:', error);
+        showError(`生成失败：${error.message}`);
     }
 }
 
-// 绘图函数（更新了二维码参数）
-function drawModules(ctx, date, news, weiyu, qrImage) {
-    const W = POSTER_WIDTH, H = ctx.canvas.height, baseMargin = 25, lineHeight = 30, weiyuPad = 15, newsWeiyuGap = 10;
-    let y = baseMargin;
+// ==================== 绘图函数 ====================
+function calculatePosterHeight(newsList, weiyu, ctx) {
+    const margin = 25;
+    const titleHeight = 120;
+    const dateHeight = 40;
+    const newsItemSpacing = 10;
+    const weiyuPadding = 20;
     
-    // 绘制标题
-    const gradient = ctx.createLinearGradient(0, y, W, y);
-    gradient.addColorStop(0, COLORS.primary);
-    gradient.addColorStop(1, COLORS.primaryLight);
-    ctx.font = "bold 30px 微软雅黑";
+    // 新闻项高度
+    let newsHeight = 0;
+    ctx.font = "17px 微软雅黑";
+    const maxNewsWidth = CONFIG.POSTER_WIDTH - margin * 2 - 50; // 留出序号位置
+    
+    newsList.forEach(item => {
+        // 计算文本行数
+        let line = '';
+        let lines = 1;
+        
+        for (let char of item) {
+            const testLine = line + char;
+            if (ctx.measureText(testLine).width > maxNewsWidth) {
+                lines++;
+                line = char;
+            } else {
+                line = testLine;
+            }
+        }
+        
+        // 每行高度约30px
+        newsHeight += lines * 30 + newsItemSpacing;
+    });
+    
+    if (newsList.length > 0) {
+        newsHeight -= newsItemSpacing; // 去掉最后一个间距
+    }
+    
+    // 微语高度
+    let weiyuLines = 1;
+    let weiyuLine = '';
+    const maxWeiyuWidth = CONFIG.POSTER_WIDTH - margin * 2 - weiyuPadding * 2;
+    
+    for (let char of weiyu) {
+        const testLine = weiyuLine + char;
+        if (ctx.measureText(testLine).width > maxWeiyuWidth) {
+            weiyuLines++;
+            weiyuLine = char;
+        } else {
+            weiyuLine = testLine;
+        }
+    }
+    
+    const weiyuHeight = weiyuPadding * 2 + weiyuLines * 25;
+    
+    // 总高度
+    return margin * 2 + titleHeight + dateHeight + newsHeight + 20 + weiyuHeight;
+}
+
+function drawPoster(ctx, date, newsList, weiyu, qrImage, width, height) {
+    const margin = 25;
+    let y = margin;
+    
+    // 背景
+    ctx.fillStyle = CONFIG.COLORS.bgMain;
+    ctx.fillRect(0, 0, width, height);
+    
+    // 标题
+    const gradient = ctx.createLinearGradient(0, y, width, y);
+    gradient.addColorStop(0, CONFIG.COLORS.primary);
+    gradient.addColorStop(1, CONFIG.COLORS.primaryLight);
+    
+    ctx.font = "bold 32px 微软雅黑";
     ctx.fillStyle = gradient;
     ctx.textAlign = "center";
-    ctx.fillText("资源鉴・60秒资讯简报", W/2, y + 50);
+    ctx.fillText("资源鉴・60秒资讯简报", width / 2, y + 50);
     
     // 标题下划线
-    ctx.strokeStyle = COLORS.splitLine;
+    ctx.strokeStyle = gradient;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(W/2 - 110, y + 70);
-    ctx.lineTo(W/2 + 110, y + 70);
+    ctx.moveTo(width / 2 - 120, y + 70);
+    ctx.lineTo(width / 2 + 120, y + 70);
     ctx.stroke();
     
-    // 绘制二维码（直接使用传入的qrImage）
+    // 二维码
     if (qrImage) {
-        try {
-            const qrX = W - baseMargin - QR_SIZE;
-            const qrY = y + (95 - QR_SIZE) / 2;
-            
-            // 二维码背景
-            ctx.fillStyle = COLORS.bgSub;
-            ctx.beginPath();
-            ctx.arc(qrX + QR_SIZE/2, qrY + QR_SIZE/2, QR_SIZE/2 + 4, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // 绘制二维码图片
-            ctx.drawImage(qrImage, qrX, qrY, QR_SIZE, QR_SIZE);
-            
-            // 二维码文字
-            ctx.font = "12px 微软雅黑";
-            ctx.fillStyle = COLORS.textSub;
-            ctx.textAlign = "center";
-            ctx.fillText("扫码查看更多内容", qrX + QR_SIZE/2, qrY + QR_SIZE + 18);
-        } catch (error) {
-            console.error("绘制二维码失败:", error);
-        }
-    }
-    
-    // 绘制日期
-    ctx.textAlign = "left";
-    y += 120;
-    ctx.font = "19px 微软雅黑";
-    ctx.fillStyle = COLORS.textSub;
-    ctx.textAlign = "center";
-    const fullDate = `${date} ${getWeek(date)}`;
-    ctx.fillText(fullDate, W/2, y + 25);
-    
-    // 绘制新闻列表
-    ctx.textAlign = "left";
-    y += 40;
-    ctx.font = "17px 微软雅黑";
-    const newsMaxW = W - 2 * baseMargin - 50;
-    
-    news.forEach((item, idx) => {
-        // 序号圆圈
-        ctx.fillStyle = COLORS.primary;
-        const numX = baseMargin;
-        const numY = y + 18;
+        const qrSize = 80;
+        const qrX = width - margin - qrSize;
+        const qrY = y + 10;
+        
+        // 二维码背景
+        ctx.fillStyle = CONFIG.COLORS.bgSub;
         ctx.beginPath();
-        ctx.arc(numX + 11, numY - 7, 9, 0, Math.PI * 2);
+        ctx.arc(qrX + qrSize / 2, qrY + qrSize / 2, qrSize / 2 + 5, 0, Math.PI * 2);
         ctx.fill();
         
-        // 序号数字
-        ctx.font = "13px 微软雅黑";
-        ctx.fillStyle = "#ffffff";
+        // 二维码图片
+        ctx.drawImage(qrImage, qrX, qrY, qrSize, qrSize);
+        
+        // 二维码文字
+        ctx.font = "12px 微软雅黑";
+        ctx.fillStyle = CONFIG.COLORS.textSub;
+        ctx.fillText("扫码查看更多", qrX + qrSize / 2, qrY + qrSize + 18);
+    }
+    
+    // 日期
+    y += 120;
+    ctx.font = "20px 微软雅黑";
+    ctx.fillStyle = CONFIG.COLORS.textSub;
+    ctx.textAlign = "center";
+    
+    const weekDays = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+    let weekDay = "";
+    try {
+        const dateObj = new Date(date);
+        weekDay = weekDays[dateObj.getDay()] || "";
+    } catch (e) {
+        weekDay = "";
+    }
+    
+    ctx.fillText(`${date} ${weekDay}`, width / 2, y + 25);
+    
+    // 新闻列表
+    y += 50;
+    ctx.textAlign = "left";
+    ctx.font = "17px 微软雅黑";
+    
+    const maxNewsWidth = width - margin * 2 - 50;
+    
+    newsList.forEach((item, index) => {
+        // 序号
+        ctx.fillStyle = CONFIG.COLORS.primary;
+        ctx.beginPath();
+        ctx.arc(margin + 15, y + 15, 10, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.font = "14px 微软雅黑";
+        ctx.fillStyle = "white";
         ctx.textAlign = "center";
-        ctx.fillText(`${idx + 1}`, numX + 11, numY - 3);
+        ctx.fillText((index + 1).toString(), margin + 15, y + 20);
         
         // 新闻内容
-        ctx.textAlign = "left";
         ctx.font = "17px 微软雅黑";
-        ctx.fillStyle = COLORS.textMain;
-        y = drawWrapText(ctx, item, baseMargin + 30, y, newsMaxW, lineHeight);
-        y += 10;
+        ctx.fillStyle = CONFIG.COLORS.textMain;
+        ctx.textAlign = "left";
+        
+        // 换行处理
+        let line = '';
+        let lineY = y;
+        
+        for (let char of item) {
+            const testLine = line + char;
+            if (ctx.measureText(testLine).width > maxNewsWidth) {
+                ctx.fillText(line, margin + 35, lineY + 20);
+                line = char;
+                lineY += 28;
+            } else {
+                line = testLine;
+            }
+        }
+        
+        if (line) {
+            ctx.fillText(line, margin + 35, lineY + 20);
+        }
+        
+        y = lineY + 35;
     });
     
-    if (news.length > 0) y -= 10;
-    y += newsWeiyuGap;
+    // 微语
+    y += 20;
+    const weiyuWidth = width - margin * 2;
+    const weiyuHeight = 80;
+    
+    ctx.fillStyle = CONFIG.COLORS.bgSub;
+    ctx.beginPath();
+    ctx.roundRect(margin, y, weiyuWidth, weiyuHeight, 10);
+    ctx.fill();
+    
+    ctx.strokeStyle = CONFIG.COLORS.primary + "20";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    
+    ctx.font = "italic 16px 微软雅黑";
+    ctx.fillStyle = CONFIG.COLORS.textSub;
+    ctx.textAlign = "center";
+    
+    // 微语换行
+    const maxWeiyuWidth = weiyuWidth - 30;
+    let weiyuLine = '';
+    let weiyuLines = [];
+    let currentLine = '';
+    
+    for (let char of weiyu) {
+        const testLine = currentLine + char;
+        if (ctx.measureText(testLine).width > maxWeiyuWidth) {
+            weiyuLines.push(currentLine);
+            currentLine = char;
+        } else {
+            currentLine = testLine;
+        }
+    }
+    if (currentLine) weiyuLines.push(currentLine);
     
     // 绘制微语
-    const weiyuMaxW = W - 2 * baseMargin - 2 * weiyuPad;
-    const tempCtx = document.createElement("canvas").getContext("2d");
-    tempCtx.font = "17px 微软雅黑";
-    
-    let weiyuLines = 1, weiyuText = "";
-    for (const char of weiyu) {
-        if (tempCtx.measureText(weiyuText + char).width > weiyuMaxW) { 
-            weiyuLines++; 
-            weiyuText = char; 
-        } else { 
-            weiyuText += char; 
-        }
-    }
-    
-    const weiyuBgH = weiyuPad * 2 + weiyuLines * lineHeight;
-    ctx.fillStyle = COLORS.bgSub;
-    roundRect(ctx, baseMargin, y, W - 2 * baseMargin, weiyuBgH, 10, true);
-    ctx.strokeStyle = COLORS.border;
-    ctx.lineWidth = 1;
-    roundRect(ctx, baseMargin, y, W - 2 * baseMargin, weiyuBgH, 10, false);
-    
-    ctx.font = "17px 微软雅黑";
-    ctx.fillStyle = COLORS.textSub;
-    drawWrapText(ctx, weiyu, baseMargin + weiyuPad, y + weiyuPad, weiyuMaxW, lineHeight);
-}
-
-// 其他辅助函数保持不变
-function drawPosterBackground(ctx, w, h) {
-    ctx.fillStyle = COLORS.bgMain;
-    roundRect(ctx, 0, 0, w, h, 20, true);
-    ctx.fillStyle = "rgba(0,0,0,0.02)";
-    roundRect(ctx, 2, 2, w-4, h-4, 18, true);
-}
-
-function roundRect(ctx, x, y, width, height, radius, fill) {
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.arcTo(x + width, y, x + width, y + height, radius);
-    ctx.arcTo(x + width, y + height, x, y + height, radius);
-    ctx.arcTo(x, y + height, x, y, radius);
-    ctx.arcTo(x, y, x + width, y, radius);
-    ctx.closePath();
-    if (fill) ctx.fill();
-}
-
-function calculateExactHeight(news, weiyu) {
-    const baseMargin = 25, titleH = 120, dateH = 40, newsGap = 10, lineHeight = 30, weiyuPad = 15, newsWeiyuGap = 10;
-    const tempCtx = document.createElement("canvas").getContext("2d");
-    tempCtx.font = "17px 微软雅黑";
-    let newsH = 0;
-    const newsMaxW = POSTER_WIDTH - 2*baseMargin - 50;
-    news.forEach(item => {
-        let lines = 1, lineText = "";
-        for (const char of item) {
-            if (tempCtx.measureText(lineText + char).width > newsMaxW) { lines++; lineText = char; } 
-            else { lineText += char; }
-        }
-        newsH += lines * lineHeight + newsGap;
+    weiyuLines.forEach((line, i) => {
+        ctx.fillText(line, width / 2, y + 30 + i * 25);
     });
-    newsH = newsH > 0 ? newsH - newsGap : 0;
-    let weiyuLines = 1, weiyuText = "";
-    const weiyuMaxW = POSTER_WIDTH - 2*baseMargin - 2*weiyuPad;
-    for (const char of weiyu) {
-        if (tempCtx.measureText(weiyuText + char).width > weiyuMaxW) { weiyuLines++; weiyuText = char; } 
-        else { weiyuText += char; }
-    }
-    const weiyuH = weiyuPad*2 + weiyuLines*lineHeight;
-    return baseMargin*2 + titleH + dateH + newsH + newsWeiyuGap + weiyuH;
 }
 
-function drawWrapText(ctx, text, x, y, maxWidth, lineHeight) {
-    let currentLine = "", currentY = y;
-    for (const char of text) {
-        if (ctx.measureText(currentLine + char).width > maxWidth) {
-            ctx.fillText(currentLine, x, currentY + 18);
-            currentLine = char;
-            currentY += lineHeight;
-        } else {
-            currentLine += char;
-        }
-    }
-    ctx.fillText(currentLine, x, currentY + 18);
-    return currentY + lineHeight;
+// ==================== 初始化 ====================
+// 添加圆角矩形方法
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+    CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        if (w < 2 * r) r = w / 2;
+        if (h < 2 * r) r = h / 2;
+        this.beginPath();
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+    };
 }
 
-function getWeek(dateStr) {
-    try {
-        const [y, m, d] = dateStr.split("-").map(Number);
-        const weekList = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
-        return weekList[new Date(y, m-1, d).getDay()];
-    } catch {
-        return "";
+// 页面加载完成后运行
+document.addEventListener('DOMContentLoaded', function() {
+    // 检查网络状态
+    if (navigator.onLine === false) {
+        showError("网络连接已断开，请检查网络后重试");
+        return;
     }
-}
-
-// 启动
-run();
+    
+    // 开始生成海报
+    generatePoster();
+});
 </script>
 </body>
 </html>
