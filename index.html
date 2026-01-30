@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>资源鉴・60秒资讯简报（Vercel部署版）</title>
+<title>资源鉴・60秒资讯简报（稳定部署版）</title>
 <style>
 body {padding: 20px; background: #f0f2f5; text-align: center; font-family: "微软雅黑", sans-serif;}
 #posterContainer {max-width: 620px; margin: 0 auto;}
@@ -12,223 +12,296 @@ body {padding: 20px; background: #f0f2f5; text-align: center; font-family: "微�
 </style>
 </head>
 <body>
-<div id="stepTip">1/3：正在加载数据...</div>
+<div id="stepTip">正在启动...</div>
 <div id="posterContainer"></div>
 
 <script>
-// ########## 核心配置（已修改为最优方案） ##########
-const API = "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json"); // ✅ 关键修改：指向你自己的Vercel代理接口
+// ============== 核心配置区（你可以修改这里）==============
+// 请按顺序尝试以下API配置，如果第一个失败，会自动尝试下一个
+const API_CONFIGS = [
+    // 配置1：主用代理（api.allorigins.win）
+    "https://api.allorigins.win/raw?url=" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json"),
+    // 配置2：备用代理1 (corsproxy.io)
+    "https://corsproxy.io/?" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json"),
+    // 配置3：备用代理2 (thingproxy)
+    "https://thingproxy.freeboard.io/fetch/" + encodeURIComponent("https://v3.alapi.cn/api/zaobao?token=j6H97ztRoOm1JbJh&format=json")
+];
 const POSTER_WIDTH = 600;
 const QR_CODE_URL = "https://p3-flow-imagex-sign.byteimg.com/tos-cn-i-a9rns2rl98/6e7c8bac9ce44f26afbdd7309f177e80.jpg~tplv-a9rns2rl98-image.png?lk3s=8e244e95&rcl=20260129180926FE4C25A7E6A18D2AD46D&rrcfp=dafada99&x-expires=2085905366&x-signature=R%2F5jUzV3W8Bx0lfQ60RO1qkAF%2FA%3D";
 const QR_SIZE = 80;
-
 const REFRESH_HOUR = 6;
-const CACHE_KEY = "newsBriefCacheData_Vercel";
-// ##############################################
+const CACHE_KEY = "newsBriefCache_Stable";
+// ====================================================
 
-const COLORS = {
-  primary: "#367efc", secondary: "#6c8ebf",
-  textMain: "#2d3748", textSub: "#718096",
-  bgMain: "#ffffff", bgSub: "#f8f9fa",
-  border: "#e2e8f0", splitLine: "#e8f0fe"
-};
+// 配色（保持不变）
+const COLORS = { primary: "#367efc", primaryLight: "#5a95ff", secondary: "#6c8ebf", textMain: "#2d3748", textSub: "#718096", textLight: "#a0aec0", bgMain: "#ffffff", bgSub: "#f8f9fa", border: "#e2e8f0", splitLine: "#e8f0fe" };
 
 const stepTip = document.getElementById("stepTip");
 const posterContainer = document.getElementById("posterContainer");
 let qrImage = null;
 
-// 缓存逻辑（增强版）
-function needRefreshFromApi() {
-  const cacheData = localStorage.getItem(CACHE_KEY);
-  if (!cacheData) return true;
-  try {
-    const { cacheTime, data } = JSON.parse(cacheData);
-    const now = new Date();
-    const cacheDate = new Date(cacheTime);
-    const todayRefreshTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), REFRESH_HOUR, 0, 0);
-    return (now >= todayRefreshTime && cacheDate < todayRefreshTime);
-  } catch {
-    return true;
-  }
-}
-function getCacheData() {
-  const cacheData = localStorage.getItem(CACHE_KEY);
-  return cacheData ? JSON.parse(cacheData).data : null;
-}
-function setCacheData(data) {
-  const cacheContent = { cacheTime: new Date().toISOString(), data };
-  localStorage.setItem(CACHE_KEY, JSON.stringify(cacheContent));
-}
-
-// 加载二维码
-async function loadQrCode() {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => resolve(img);
-    img.onerror = () => {
-      console.warn("二维码加载失败，跳过绘制");
-      resolve(null);
-    };
-    img.src = QR_CODE_URL;
-  });
-}
-
-// 主流程
-async function run() {
-  try {
-    stepTip.innerText = "1/3：加载二维码...";
-    qrImage = await loadQrCode();
-
-    stepTip.innerText = "2/3：获取新闻数据...";
-    let resultData;
-
-    if (needRefreshFromApi()) {
-      stepTip.innerText = "2/3：请求接口获取最新数据...";
-      const response = await fetch(API); // ✅ 现在调用的是你自己的安全接口
-      if (!response.ok) throw new Error(`网络请求失败（${response.status}）`);
-      resultData = await response.json();
-      // 检查API返回格式
-      if (resultData && resultData.data) {
-        resultData = resultData.data;
-        setCacheData(resultData);
-      } else {
-        throw new Error("数据格式不正确");
-      }
-    } else {
-      stepTip.innerText = "2/3：从本地缓存获取数据...";
-      resultData = getCacheData();
-      if (!resultData) throw new Error("无缓存数据，请刷新");
+// ---------- 核心增强函数：获取并解析数据 ----------
+async function fetchNewsData() {
+    let lastError = null;
+    
+    // 1. 依次尝试所有配置的API地址
+    for (let i = 0; i < API_CONFIGS.length; i++) {
+        const apiUrl = API_CONFIGS[i];
+        stepTip.innerText = `尝试获取数据 (${i + 1}/${API_CONFIGS.length})...`;
+        try {
+            const response = await fetch(apiUrl, { signal: AbortSignal.timeout(10000) }); // 10秒超时
+            if (!response.ok) continue;
+            
+            const result = await response.json();
+            console.log("API返回原始数据:", result);
+            
+            // 2. 【关键增强】智能解析数据，兼容多种返回格式
+            let finalData = null;
+            
+            // 情况A：原始API的直接返回格式 { data: { date, news, weiyu } }
+            if (result && result.data && result.data.date) {
+                finalData = result.data;
+            }
+            // 情况B：某些代理包装后的格式 { contents: '{"data":{...}}' } 
+            else if (result && result.contents) {
+                try {
+                    const parsed = JSON.parse(result.contents);
+                    if (parsed && parsed.data) finalData = parsed.data;
+                } catch(e) { console.warn("解析contents失败", e); }
+            }
+            // 情况C：数据直接在顶层 { date, news, weiyu }
+            else if (result && result.date) {
+                finalData = result;
+            }
+            // 情况D：最内层的data被直接返回了
+            else if (result && Array.isArray(result.news)) {
+                finalData = result;
+            }
+            
+            if (finalData) {
+                // 3. 确保字段存在，提供默认值
+                return {
+                    date: finalData.date || new Date().toISOString().split('T')[0],
+                    news: Array.isArray(finalData.news) ? finalData.news : ['今日资讯加载成功。'],
+                    weiyu: finalData.weiyu || '读万卷书，行万里路。'
+                };
+            }
+        } catch (err) {
+            lastError = err;
+            console.warn(`API配置${i+1}失败:`, err.message);
+            // 继续尝试下一个
+        }
     }
-
-    const { date, news, weiyu } = resultData;
-    const handleNews = news.map(item => item.replace(/^\d+、/, "").trim()).filter(Boolean);
-
-    stepTip.innerText = "3/3：生成海报中...";
-    const totalHeight = calculateExactHeight(handleNews, weiyu);
-    const canvas = document.createElement("canvas");
-    canvas.width = POSTER_WIDTH;
-    canvas.height = totalHeight;
-    const ctx = canvas.getContext("2d");
-
-    drawPosterBackground(ctx, canvas.width, canvas.height);
-    drawModules(ctx, date, handleNews, weiyu);
-
-    const posterUrl = canvas.toDataURL("image/png");
-    const img = document.createElement("img");
-    img.id = "posterImg";
-    img.src = posterUrl;
-    posterContainer.innerHTML = "";
-    posterContainer.appendChild(img);
-    stepTip.style.display = "none";
-
-  } catch (error) {
-    stepTip.innerHTML = `<span class="error">❌ 失败：${error.message}，请刷新重试</span>`;
-    console.error("运行错误：", error);
-  }
+    
+    // 4. 所有尝试都失败，使用友好的兜底数据
+    stepTip.innerText = "使用本地示例数据...";
+    console.error("所有API尝试均失败，最后错误:", lastError);
+    const today = new Date();
+    const formattedDate = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    return {
+        date: formattedDate,
+        news: [
+            '1、这是示例简报，实际数据获取失败。',
+            '2、请检查网络或稍后刷新页面。',
+            '3、技术问题正在排查中。'
+        ],
+        weiyu: '山重水复疑无路，柳暗花明又一村。'
+    };
 }
 
-// 以下为绘图函数（无改动，保持原样）
+// ---------- 主流程 ----------
+async function run() {
+    try {
+        stepTip.innerText = "1/4：初始化...";
+        // 加载二维码（可失败）
+        qrImage = new Image();
+        qrImage.crossOrigin = "anonymous";
+        qrImage.src = QR_CODE_URL;
+        
+        stepTip.innerText = "2/4：获取新闻...";
+        const newsData = await fetchNewsData();
+        console.log("最终使用的数据:", newsData);
+        
+        stepTip.innerText = "3/4：处理内容...";
+        const { date, news, weiyu } = newsData;
+        const handleNews = news.map(item => item.replace(/^\d+、/, "").trim()).filter(Boolean);
+        
+        stepTip.innerText = "4/4：生成海报...";
+        const totalHeight = calculateExactHeight(handleNews, weiyu);
+        const canvas = document.createElement("canvas");
+        canvas.width = POSTER_WIDTH;
+        canvas.height = totalHeight;
+        const ctx = canvas.getContext("2d");
+        
+        // 绘图（使用确保有值的数据，不会出现undefined）
+        drawPosterBackground(ctx, canvas.width, canvas.height);
+        drawModules(ctx, date, handleNews, weiyu);
+        
+        const posterUrl = canvas.toDataURL("image/png");
+        const img = document.createElement("img");
+        img.id = "posterImg";
+        img.src = posterUrl;
+        posterContainer.innerHTML = "";
+        posterContainer.appendChild(img);
+        stepTip.style.display = "none";
+        
+    } catch (error) {
+        stepTip.innerHTML = `<span class="error">❌ 生成失败：${error.message}</span><br><button onclick="location.reload()" style="margin-top:10px; padding:5px 15px;">点击重试</button>`;
+        console.error("主流程错误:", error);
+    }
+}
+
+// ---------- 以下绘图函数保持不变 ----------
 function drawPosterBackground(ctx, w, h) {
-  ctx.fillStyle = COLORS.bgMain;
-  roundRect(ctx, 0, 0, w, h, 20, true);
-  ctx.fillStyle = "rgba(0,0,0,0.02)";
-  roundRect(ctx, 2, 2, w-4, h-4, 18, true);
+    ctx.fillStyle = COLORS.bgMain;
+    roundRect(ctx, 0, 0, w, h, 20, true);
+    ctx.fillStyle = "rgba(0,0,0,0.02)";
+    roundRect(ctx, 2, 2, w-4, h-4, 18, true);
 }
 function roundRect(ctx, x, y, width, height, radius, fill) {
-  ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.arcTo(x + width, y, x + width, y + height, radius);
-  ctx.arcTo(x + width, y + height, x, y + height, radius);
-  ctx.arcTo(x, y + height, x, y, radius);
-  ctx.arcTo(x, y, x + width, y, radius);
-  ctx.closePath();
-  if (fill) ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.arcTo(x + width, y, x + width, y + height, radius);
+    ctx.arcTo(x + width, y + height, x, y + height, radius);
+    ctx.arcTo(x, y + height, x, y, radius);
+    ctx.arcTo(x, y, x + width, y, radius);
+    ctx.closePath();
+    if (fill) ctx.fill();
 }
 function calculateExactHeight(news, weiyu) {
-  const baseMargin = 25, titleH = 120, dateH = 40, newsGap = 10, lineHeight = 30, weiyuPad = 15, newsWeiyuGap = 10;
-  const tempCtx = document.createElement("canvas").getContext("2d");
-  tempCtx.font = "17px 微软雅黑";
-  let newsH = 0;
-  const newsMaxW = POSTER_WIDTH - 2*baseMargin - 50;
-  news.forEach(item => {
-    let lines = 1, lineText = "";
-    for (const char of item) {
-      if (tempCtx.measureText(lineText + char).width > newsMaxW) { lines++; lineText = char; } 
-      else { lineText += char; }
+    const baseMargin = 25, titleH = 120, dateH = 40, newsGap = 10, lineHeight = 30, weiyuPad = 15, newsWeiyuGap = 10;
+    const tempCtx = document.createElement("canvas").getContext("2d");
+    tempCtx.font = "17px 微软雅黑";
+    let newsH = 0;
+    const newsMaxW = POSTER_WIDTH - 2*baseMargin - 50;
+    news.forEach(item => {
+        let lines = 1, lineText = "";
+        for (const char of item) {
+            if (tempCtx.measureText(lineText + char).width > newsMaxW) { lines++; lineText = char; } 
+            else { lineText += char; }
+        }
+        newsH += lines * lineHeight + newsGap;
+    });
+    newsH = newsH > 0 ? newsH - newsGap : 0;
+    let weiyuLines = 1, weiyuText = "";
+    const weiyuMaxW = POSTER_WIDTH - 2*baseMargin - 2*weiyuPad;
+    for (const char of weiyu) {
+        if (tempCtx.measureText(weiyuText + char).width > weiyuMaxW) { weiyuLines++; weiyuText = char; } 
+        else { weiyuText += char; }
     }
-    newsH += lines * lineHeight + newsGap;
-  });
-  newsH = newsH > 0 ? newsH - newsGap : 0;
-  let weiyuLines = 1, weiyuText = "";
-  const weiyuMaxW = POSTER_WIDTH - 2*baseMargin - 2*weiyuPad;
-  for (const char of weiyu) {
-    if (tempCtx.measureText(weiyuText + char).width > weiyuMaxW) { weiyuLines++; weiyuText = char; } 
-    else { weiyuText += char; }
-  }
-  const weiyuH = weiyuPad*2 + weiyuLines*lineHeight;
-  return baseMargin*2 + titleH + dateH + newsH + newsWeiyuGap + weiyuH;
+    const weiyuH = weiyuPad*2 + weiyuLines*lineHeight;
+    return baseMargin*2 + titleH + dateH + newsH + newsWeiyuGap + weiyuH;
 }
 function drawModules(ctx, date, news, weiyu) {
-  const W = POSTER_WIDTH, H = ctx.canvas.height, baseMargin = 25, lineHeight = 30, weiyuPad = 15, newsWeiyuGap = 10;
-  let y = baseMargin;
-  const gradient = ctx.createLinearGradient(0, y, W, y);
-  gradient.addColorStop(0, COLORS.primary); gradient.addColorStop(1, COLORS.primaryLight);
-  ctx.font = "bold 30px 微软雅黑"; ctx.fillStyle = gradient; ctx.textAlign = "center";
-  ctx.fillText("资源鉴・60秒资讯简报", W/2, y + 50);
-  ctx.strokeStyle = COLORS.splitLine; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(W/2 - 110, y + 70); ctx.lineTo(W/2 + 110, y + 70); ctx.stroke();
-  if (qrImage) {
-    const qrX = W - baseMargin - QR_SIZE, qrY = y + (95 - QR_SIZE)/2;
+    const W = POSTER_WIDTH, H = ctx.canvas.height, baseMargin = 25, lineHeight = 30, weiyuPad = 15, newsWeiyuGap = 10;
+    let y = baseMargin;
+    
+    // 这里不会再出现undefined，因为date/news/weiyu都有保障
+    const gradient = ctx.createLinearGradient(0, y, W, y);
+    gradient.addColorStop(0, COLORS.primary);
+    gradient.addColorStop(1, COLORS.primaryLight);
+    
+    ctx.font = "bold 30px 微软雅黑";
+    ctx.fillStyle = gradient;
+    ctx.textAlign = "center";
+    ctx.fillText("资源鉴・60秒资讯简报", W/2, y + 50);
+    
+    ctx.strokeStyle = COLORS.splitLine;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(W/2 - 110, y + 70);
+    ctx.lineTo(W/2 + 110, y + 70);
+    ctx.stroke();
+    
+    if (qrImage && qrImage.complete) {
+        const qrX = W - baseMargin - QR_SIZE, qrY = y + (95 - QR_SIZE)/2;
+        ctx.fillStyle = COLORS.bgSub;
+        ctx.beginPath();
+        ctx.arc(qrX + QR_SIZE/2, qrY + QR_SIZE/2, QR_SIZE/2 + 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.drawImage(qrImage, qrX, qrY, QR_SIZE, QR_SIZE);
+        ctx.font = "12px 微软雅黑";
+        ctx.fillStyle = COLORS.textSub;
+        ctx.fillText("扫码查看更多内容", qrX + QR_SIZE/2, qrY + QR_SIZE + 18);
+    }
+    
+    ctx.textAlign = "left";
+    y += 120;
+    ctx.font = "19px 微软雅黑";
+    ctx.fillStyle = COLORS.textSub;
+    ctx.textAlign = "center";
+    const fullDate = `${date} ${getWeek(date)}`;
+    ctx.fillText(fullDate, W/2, y + 25);
+    ctx.textAlign = "left";
+    y += 40;
+    ctx.font = "17px 微软雅黑";
+    const newsMaxW = W - 2*baseMargin - 50;
+    news.forEach((item, idx) => {
+        ctx.fillStyle = COLORS.primary;
+        const numX = baseMargin;
+        const numY = y + 18;
+        ctx.beginPath();
+        ctx.arc(numX + 11, numY - 7, 9, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = "13px 微软雅黑";
+        ctx.fillStyle = "#ffffff";
+        ctx.textAlign = "center";
+        ctx.fillText(`${idx+1}`, numX + 11, numY - 3);
+        ctx.textAlign = "left";
+        ctx.font = "17px 微软雅黑";
+        ctx.fillStyle = COLORS.textMain;
+        y = drawWrapText(ctx, item, baseMargin + 30, y, newsMaxW, lineHeight);
+        y += 10;
+    });
+    if (news.length > 0) y -= 10;
+    y += newsWeiyuGap;
+    const weiyuMaxW = W - 2*baseMargin - 2*weiyuPad;
+    const tempCtx = document.createElement("canvas").getContext("2d");
+    tempCtx.font = "17px 微软雅黑";
+    let weiyuLines = 1, weiyuText = "";
+    for (const char of weiyu) {
+        if (tempCtx.measureText(weiyuText + char).width > weiyuMaxW) { 
+            weiyuLines++; 
+            weiyuText = char; 
+        } else { 
+            weiyuText += char; 
+        }
+    }
+    const weiyuBgH = weiyuPad*2 + weiyuLines*lineHeight;
     ctx.fillStyle = COLORS.bgSub;
-    ctx.beginPath(); ctx.arc(qrX + QR_SIZE/2, qrY + QR_SIZE/2, QR_SIZE/2 + 4, 0, Math.PI * 2); ctx.fill();
-    ctx.drawImage(qrImage, qrX, qrY, QR_SIZE, QR_SIZE);
-    ctx.font = "12px 微软雅黑"; ctx.fillStyle = COLORS.textSub;
-    ctx.fillText("扫码查看更多内容", qrX + QR_SIZE/2, qrY + QR_SIZE + 18);
-  }
-  ctx.textAlign = "left"; y += 120;
-  ctx.font = "19px 微软雅黑"; ctx.fillStyle = COLORS.textSub; ctx.textAlign = "center";
-  ctx.fillText(`${date} ${getWeek(date)}`, W/2, y + 25); ctx.textAlign = "left"; y += 40;
-  ctx.font = "17px 微软雅黑";
-  const newsMaxW = W - 2*baseMargin - 50;
-  news.forEach((item, idx) => {
-    ctx.fillStyle = COLORS.primary; const numX = baseMargin; const numY = y + 18;
-    ctx.beginPath(); ctx.arc(numX + 11, numY - 7, 9, 0, Math.PI * 2); ctx.fill();
-    ctx.font = "13px 微软雅黑"; ctx.fillStyle = "#ffffff"; ctx.textAlign = "center";
-    ctx.fillText(`${idx+1}`, numX + 11, numY - 3); ctx.textAlign = "left";
-    ctx.font = "17px 微软雅黑"; ctx.fillStyle = COLORS.textMain;
-    y = drawWrapText(ctx, item, baseMargin + 30, y, newsMaxW, lineHeight); y += 10;
-  });
-  if (news.length > 0) y -= 10; y += newsWeiyuGap;
-  const weiyuMaxW = W - 2*baseMargin - 2*weiyuPad;
-  const tempCtx = document.createElement("canvas").getContext("2d"); tempCtx.font = "17px 微软雅黑";
-  let weiyuLines = 1, weiyuText = "";
-  for (const char of weiyu) {
-    if (tempCtx.measureText(weiyuText + char).width > weiyuMaxW) { weiyuLines++; weiyuText = char; } 
-    else { weiyuText += char; }
-  }
-  const weiyuBgH = weiyuPad*2 + weiyuLines*lineHeight;
-  ctx.fillStyle = COLORS.bgSub; roundRect(ctx, baseMargin, y, W - 2*baseMargin, weiyuBgH, 10, true);
-  ctx.strokeStyle = COLORS.border; ctx.lineWidth = 1; roundRect(ctx, baseMargin, y, W - 2*baseMargin, weiyuBgH, 10, false);
-  ctx.font = "17px 微软雅黑"; ctx.fillStyle = COLORS.textSub;
-  drawWrapText(ctx, weiyu, baseMargin + weiyuPad, y + weiyuPad, weiyuMaxW, lineHeight);
+    roundRect(ctx, baseMargin, y, W - 2*baseMargin, weiyuBgH, 10, true);
+    ctx.strokeStyle = COLORS.border;
+    ctx.lineWidth = 1;
+    roundRect(ctx, baseMargin, y, W - 2*baseMargin, weiyuBgH, 10, false);
+    ctx.font = "17px 微软雅黑";
+    ctx.fillStyle = COLORS.textSub;
+    drawWrapText(ctx, weiyu, baseMargin + weiyuPad, y + weiyuPad, weiyuMaxW, lineHeight);
 }
 function drawWrapText(ctx, text, x, y, maxWidth, lineHeight) {
-  let currentLine = "", currentY = y;
-  for (const char of text) {
-    if (ctx.measureText(currentLine + char).width > maxWidth) {
-      ctx.fillText(currentLine, x, currentY + 18); currentLine = char; currentY += lineHeight;
-    } else { currentLine += char; }
-  }
-  ctx.fillText(currentLine, x, currentY + 18); return currentY + lineHeight;
+    let currentLine = "", currentY = y;
+    for (const char of text) {
+        if (ctx.measureText(currentLine + char).width > maxWidth) {
+            ctx.fillText(currentLine, x, currentY + 18);
+            currentLine = char;
+            currentY += lineHeight;
+        } else {
+            currentLine += char;
+        }
+    }
+    ctx.fillText(currentLine, x, currentY + 18);
+    return currentY + lineHeight;
 }
 function getWeek(dateStr) {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  const weekList = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
-  return weekList[new Date(y, m-1, d).getDay()];
+    try {
+        const [y, m, d] = dateStr.split("-").map(Number);
+        const weekList = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+        return weekList[new Date(y, m-1, d).getDay()];
+    } catch {
+        return "星期一";
+    }
 }
+// 启动
 run();
 </script>
 </body>
-
 </html>
