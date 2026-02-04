@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <title>60秒新闻早报-资源鉴</title>
@@ -10,479 +10,492 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Helvetica Neue',
-          Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      .brush-text {
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-        letter-spacing: 0.15em;
-      }
-      .seal {
-        writing-mode: vertical-rl;
-        text-orientation: upright;
-        border: 2px solid currentColor;
-        padding: 0.25rem;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-      }
-      html {
-        scroll-behavior: smooth;
-      }
-      input[type='date']::-webkit-calendar-picker-indicator {
-        filter: sepia(1) hue-rotate(10deg) saturate(1.5);
-        cursor: pointer;
-      }
-      @keyframes fade-in {
-        from {
-          opacity: 0;
-          transform: translateY(10px);
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', 'Helvetica Neue',
+                Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        to {
-          opacity: 1;
-          transform: translateY(0);
+        .brush-text {
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+            letter-spacing: 0.15em;
         }
-      }
-      .fade-in {
-        animation: fade-in 0.5s ease-out;
-      }
-      .decorative-border {
-        position: relative;
-      }
-      .decorative-border::before,
-      .decorative-border::after {
-        content: '❋';
-        position: absolute;
-        color: rgb(251 191 36 / 0.4);
-        font-size: 0.75rem;
-      }
-      .decorative-border::before {
-        top: 0;
-        left: 0;
-      }
-      .decorative-border::after {
-        bottom: 0;
-        right: 0;
-      }
-      #drawCanvas {
-        display: none;
-      }
-      .img-wrap {
-        margin: 0 auto;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
+        .seal {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            border: 2px solid currentColor;
+            padding: 0.25rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        input[type='date']::-webkit-calendar-picker-indicator {
+            filter: sepia(1) hue-rotate(10deg) saturate(1.5);
+            cursor: pointer;
+        }
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .fade-in {
+            animation: fade-in 0.5s ease-out;
+        }
+        .decorative-border {
+            position: relative;
+        }
+        .decorative-border::before,
+        .decorative-border::after {
+            content: '❋';
+            position: absolute;
+            color: rgb(251 191 36 / 0.4);
+            font-size: 0.75rem;
+        }
+        .decorative-border::before {
+            top: 0;
+            left: 0;
+        }
+        .decorative-border::after {
+            bottom: 0;
+            right: 0;
+        }
+        #drawCanvas {
+            display: none;
+        }
+        .img-wrap {
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
     </style>
-  </head>
-  <body class="bg-gradient-to-br from-amber-50 via-stone-50 to-amber-100 min-h-screen">
+</head>
+<body class="bg-gradient-to-br from-amber-50 via-stone-50 to-amber-100 min-h-screen">
     <div class="fixed inset-0 opacity-5 pointer-events-none">
-      <div class="absolute top-20 left-10 w-32 h-32 border-2 border-amber-400 rounded-full"></div>
-      <div class="absolute top-40 right-20 w-24 h-24 border border-stone-400 rounded-full"></div>
-      <div class="absolute bottom-32 left-1/4 w-16 h-16 border-2 border-amber-300"></div>
-      <div class="absolute bottom-20 right-1/3 w-20 h-20 border border-stone-300 transform rotate-45"></div>
+        <div class="absolute top-20 left-10 w-32 h-32 border-2 border-amber-400 rounded-full"></div>
+        <div class="absolute top-40 right-20 w-24 h-24 border border-stone-400 rounded-full"></div>
+        <div class="absolute bottom-32 left-1/4 w-16 h-16 border-2 border-amber-300"></div>
+        <div class="absolute bottom-20 right-1/3 w-20 h-20 border border-stone-300 transform rotate-45"></div>
     </div>
 
     <div class="relative z-10 max-w-4xl mx-auto px-4 py-8 md:py-12">
-      <header class="text-center mb-8 md:mb-12 fade-in">
-        <div class="inline-block relative">
-          <div class="flex items-center justify-center mb-4 gap-2">
-            <div class="w-16 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
-            <div class="w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
-            <div class="w-16 h-px bg-gradient-to-l from-transparent via-amber-400 to-transparent"></div>
-          </div>
-          <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-stone-800 brush-text mb-3">
-            每天<span class="text-amber-700">60s</span>读懂世界
-          </h1>
-          <p class="text-base md:text-lg text-stone-600 tracking-widest font-light mb-4">
-            精选每日要闻 · 日期可选
-          </p>
-          <div class="flex items-center justify-center gap-4 text-sm text-stone-500">
-            <span id="currentDate" class="tracking-wide"></span>
-            <span class="text-amber-400">❋</span>
-            <div class="flex items-center gap-1.5">
-              <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span>服务运行中</span>
+        <header class="text-center mb-8 md:mb-12 fade-in">
+            <div class="inline-block relative">
+                <div class="flex items-center justify-center mb-4 gap-2">
+                    <div class="w-16 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
+                    <div class="w-1.5 h-1.5 bg-amber-400 rounded-full"></div>
+                    <div class="w-16 h-px bg-gradient-to-l from-transparent via-amber-400 to-transparent"></div>
+                </div>
+                <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold text-stone-800 brush-text mb-3">
+                    每天<span class="text-amber-700">60s</span>读懂世界
+                </h1>
+                <p class="text-base md:text-lg text-stone-600 tracking-widest font-light mb-4">
+                    精选每日要闻 · 日期可选
+                </p>
+                <div class="flex items-center justify-center gap-4 text-sm text-stone-500">
+                    <span id="currentDate" class="tracking-wide"></span>
+                    <span class="text-amber-400">❋</span>
+                    <div class="flex items-center gap-1.5">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span>服务运行中</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-center mt-4 gap-2">
+                    <div class="w-16 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
+                    <div class="w-1 h-1 bg-amber-400 rounded-full"></div>
+                    <div class="w-16 h-px bg-gradient-to-l from-transparent via-amber-400 to-transparent"></div>
+                </div>
             </div>
-          </div>
-          <div class="flex items-center justify-center mt-4 gap-2">
-            <div class="w-16 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
-            <div class="w-1 h-1 bg-amber-400 rounded-full"></div>
-            <div class="w-16 h-px bg-gradient-to-l from-transparent via-amber-400 to-transparent"></div>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <div class="grid grid-cols-1 gap-6 md:gap-8 mb-8">
-        <section class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-stone-200/60 p-6 md:p-8 decorative-border fade-in" style="animation-delay: 0.1s">
-          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-4 border-b border-stone-200/60">
-            <div class="flex items-center gap-3">
-              <div class="seal text-amber-700 text-xs bg-amber-50">今 日</div>
-              <h2 class="text-2xl md:text-3xl font-semibold text-stone-800 brush-text">资源鉴-新闻早报</h2>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <input type="date" id="dateInput" onchange="updateButtonStates(); drawCustomNewsImage();" class="px-3 py-2 bg-amber-50/50 border border-stone-300 rounded-lg text-stone-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all" />
-              <button id="prevBtn" onclick="adjustDate(-1)" class="px-3 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg text-sm font-medium transition-all" title="前一天">←</button>
-              <button id="nextBtn" onclick="adjustDate(1)" class="px-3 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-stone-200" title="后一天">→</button>
-              <button onclick="setToday()" class="px-3 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg text-sm font-medium transition-all whitespace-nowrap" title="跳转到今天">今天</button>
-            </div>
-          </div>
-          <canvas id="drawCanvas" width="750"></canvas>
-          <div id="newsImageContainer" class="min-h-48 img-wrap"></div>
-        </section>
-      </div>
+        <div class="grid grid-cols-1 gap-6 md:gap-8 mb-8">
+            <section class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-stone-200/60 p-6 md:p-8 decorative-border fade-in" style="animation-delay: 0.1s">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 pb-4 border-b border-stone-200/60">
+                    <div class="flex items-center gap-3">
+                        <div class="seal text-amber-700 text-xs bg-amber-50">今 日</div>
+                        <h2 class="text-2xl md:text-3xl font-semibold text-stone-800 brush-text">资源鉴-新闻早报</h2>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <input type="date" id="dateInput" onchange="updateButtonStates(); drawCustomNewsImage();" class="px-3 py-2 bg-amber-50/50 border border-stone-300 rounded-lg text-stone-700 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent transition-all" />
+                        <button id="prevBtn" onclick="adjustDate(-1)" class="px-3 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg text-sm font-medium transition-all" title="前一天">←</button>
+                        <button id="nextBtn" onclick="adjustDate(1)" class="px-3 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg text-sm font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-stone-200" title="后一天">→</button>
+                        <button onclick="setToday()" class="px-3 py-2 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg text-sm font-medium transition-all whitespace-nowrap" title="跳转到今天">今天</button>
+                    </div>
+                </div>
+                <canvas id="drawCanvas" width="750"></canvas>
+                <div id="newsImageContainer" class="min-h-48 img-wrap"></div>
+            </section>
+        </div>
 
-      <footer class="text-center py-8 text-stone-600 space-y-3 fade-in" style="animation-delay: 0.4s">
-        <div class="flex items-center justify-center gap-2 mb-3">
-          <div class="w-12 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
-          <div class="w-1 h-1 bg-amber-400 rounded-full"></div>
-          <div class="w-12 h-px bg-gradient-to-l from-transparent via-amber-400 to-transparent"></div>
-        </div>
-        <p class="text-sm tracking-wide">公众号：资源鉴 ❋ 数据来源于公开网络</p>
-        <div class="flex items-center justify-center gap-2 mt-3">
-          <div class="w-12 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
-          <div class="w-0.5 h-0.5 bg-amber-400 rounded-full"></div>
-          <div class="w-12 h-px bg-gradient-to-l from-transparent via-amber-400 to-transparent"></div>
-        </div>
-      </footer>
+        <footer class="text-center py-8 text-stone-600 space-y-3 fade-in" style="animation-delay: 0.4s">
+            <div class="flex items-center justify-center gap-2 mb-3">
+                <div class="w-12 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
+                <div class="w-1 h-1 bg-amber-400 rounded-full"></div>
+                <div class="w-12 h-px bg-gradient-to-l from-transparent via-amber-400 to-transparent"></div>
+            </div>
+            <p class="text-sm tracking-wide">公众号：资源鉴 ❋ 数据来源于公开网络</p>
+            <div class="flex items-center justify-center gap-2 mt-3">
+                <div class="w-12 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
+                <div class="w-0.5 h-0.5 bg-amber-400 rounded-full"></div>
+                <div class="w-12 h-px bg-gradient-to-l from-transparent via-amber-400 to-transparent"></div>
+            </div>
+        </footer>
     </div>
 
     <script>
-      // 初始化函数
-      function init() {
-        const dateInput = document.getElementById('dateInput')
-        const today = new Date()
-        const todayStr = formatDate(today)
-        dateInput.max = todayStr
-        
-        const urlParams = new URLSearchParams(window.location.search)
-        const dateParam = urlParams.get('date')
-        let initialDate = todayStr
-        
-        if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
-          const paramDate = new Date(dateParam)
-          const todayDate = new Date(todayStr)
-          if (paramDate <= todayDate && !isNaN(paramDate.getTime())) {
-            initialDate = paramDate
-          }
+        // 初始化函数
+        function init() {
+            const dateInput = document.getElementById('dateInput')
+            const today = new Date()
+            const todayStr = formatDate(today)
+            dateInput.max = todayStr
+            
+            const urlParams = new URLSearchParams(window.location.search)
+            const dateParam = urlParams.get('date')
+            let initialDate = todayStr
+            
+            if (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) {
+                const paramDate = new Date(dateParam)
+                const todayDate = new Date(todayStr)
+                if (paramDate <= todayDate && !isNaN(paramDate.getTime())) {
+                    initialDate = paramDate
+                }
+            }
+            
+            dateInput.value = initialDate
+            updateHeaderDate(new Date(initialDate))
+            updateButtonStates()
+            drawCustomNewsImage()
         }
-        
-        dateInput.value = initialDate
-        updateHeaderDate(new Date(initialDate))
-        updateButtonStates()
-        drawCustomNewsImage()
-      }
 
-      // 格式化日期为 YYYY-MM-DD
-      function formatDate(date) {
-        return date.toISOString().split('T')[0]
-      }
+        // 格式化日期为 YYYY-MM-DD
+        function formatDate(date) {
+            return date.toISOString().split('T')[0]
+        }
 
-      // 更新顶部页面日期显示
-      function updateHeaderDate(date) {
-        const year = date.getFullYear()
-        const month = date.getMonth() + 1
-        const day = date.getDate()
-        const weekDays = ['日', '一', '二', '三', '四', '五', '六']
-        const weekDay = weekDays[date.getDay()]
-        
-        document.getElementById('currentDate').textContent = `${year}年${month}月${day}日 星期${weekDay}`
-      }
+        // 更新顶部页面日期显示
+        function updateHeaderDate(date) {
+            const year = date.getFullYear()
+            const month = date.getMonth() + 1
+            const day = date.getDate()
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六']
+            const weekDay = weekDays[date.getDay()]
+            
+            document.getElementById('currentDate').textContent = `${year}年${month}月${day}日 星期${weekDay}`
+        }
 
-      // 根据日期字符串获取星期
-      function getWeekByDateStr(dateStr) {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return ''
-        const date = new Date(dateStr)
-        if (isNaN(date.getTime())) return ''
-        
-        const weekDays = ['日', '一', '二', '三', '四', '五', '六']
-        return `星期${weekDays[date.getDay()]}`
-      }
+        // 根据日期字符串获取星期
+        function getWeekByDateStr(dateStr) {
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return ''
+            const date = new Date(dateStr)
+            if (isNaN(date.getTime())) return ''
+            
+            const weekDays = ['日', '一', '二', '三', '四', '五', '六']
+            return `星期${weekDays[date.getDay()]}`
+        }
 
-      // 更新按钮状态（禁用次日按钮）
-      function updateButtonStates() {
-        const dateInput = document.getElementById('dateInput')
-        const selectedDate = dateInput.value
-        const today = formatDate(new Date())
-        const nextBtn = document.getElementById('nextBtn')
-        
-        nextBtn.disabled = selectedDate === today
-      }
+        // 更新按钮状态（禁用次日按钮）
+        function updateButtonStates() {
+            const dateInput = document.getElementById('dateInput')
+            const selectedDate = dateInput.value
+            const today = formatDate(new Date())
+            const nextBtn = document.getElementById('nextBtn')
+            
+            nextBtn.disabled = selectedDate === today
+        }
 
-      // 跳转到今天
-      function setToday() {
-        const today = new Date()
-        document.getElementById('dateInput').value = formatDate(today)
-        updateButtonStates()
-        drawCustomNewsImage()
-      }
+        // 跳转到今天
+        function setToday() {
+            const today = new Date()
+            document.getElementById('dateInput').value = formatDate(today)
+            updateButtonStates()
+            drawCustomNewsImage()
+        }
 
-      // 调整日期（前一天/后一天）
-      function adjustDate(days) {
-        const dateInput = document.getElementById('dateInput')
-        const currentDate = new Date(dateInput.value || new Date())
-        currentDate.setDate(currentDate.getDate() + days)
-        
-        dateInput.value = formatDate(currentDate)
-        updateButtonStates()
-        drawCustomNewsImage()
-      }
+        // 调整日期（前一天/后一天）
+        function adjustDate(days) {
+            const dateInput = document.getElementById('dateInput')
+            const currentDate = new Date(dateInput.value || new Date())
+            currentDate.setDate(currentDate.getDate() + days)
+            
+            dateInput.value = formatDate(currentDate)
+            updateButtonStates()
+            drawCustomNewsImage()
+        }
 
-      // Canvas文字自动换行工具函数（精准返回下一行Y坐标）
-      function drawTextWrap(ctx, text, x, y, maxWidth, lineHeight) {
-        if (!ctx || !text) return y
-        
-        const _maxWidth = maxWidth || 650
-        const _lineHeight = lineHeight || 45
-        let curText = ''
-        let curY = y
-        
-        const words = text.split('')
-        for (let i = 0; i < words.length; i++) {
-          const testText = curText + words[i]
-          const testWidth = ctx.measureText(testText).width
-          
-          if (testWidth > _maxWidth && i > 0) {
+        // Canvas文字自动换行工具函数（精准返回换行后的底部Y坐标）
+        function drawTextWrap(ctx, text, x, y, maxWidth, lineHeight) {
+            if (!ctx || !text) return y
+            
+            const _maxWidth = maxWidth || 650
+            const _lineHeight = lineHeight || 45
+            let curText = ''
+            let curY = y
+            
+            const words = text.split('')
+            for (let i = 0; i < words.length; i++) {
+                const testText = curText + words[i]
+                const testWidth = ctx.measureText(testText).width
+                
+                if (testWidth > _maxWidth && i > 0) {
+                    ctx.fillText(curText, x, curY)
+                    curText = words[i]
+                    curY += _lineHeight
+                } else {
+                    curText = testText
+                }
+            }
+            
             ctx.fillText(curText, x, curY)
-            curText = words[i]
-            curY += _lineHeight
-          } else {
-            curText = testText
-          }
+            return curY // 返回最后一行文字的底部Y坐标，无额外偏移
         }
-        
-        ctx.fillText(curText, x, curY)
-        return curY + _lineHeight // 精准返回下一行起始Y，无额外偏差
-      }
 
-      // ====================== 二维码配置（仅需替换这里的Base64）======================
-      const QRCODE_BASE64 = "data:image/jpeg;base64,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"; // 替换为你的公众号二维码Base64
-      const QRCODE_CONFIG = {
-        size: 100,        // 二维码尺寸
-        marginRight: 20,  // 距画布右侧边距
-        scanText: '扫码查看更多内容', // 二维码左侧小字
-        scanTextSize: 14, // 扫码文字字号
-        scanTextGap: 10   // 扫码文字与二维码左侧间距
-      };
+        // ====================== 固定配置（底部区域完全固定，不随内容变化）======================
+        const QRCODE_BASE64 = "data:image/jpeg;base64,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"; // 替换为你的二维码Base64
+        const FIXED_CONFIG = {
+            // 顶部固定区域（不随内容变化）
+            titleHeight: 70,        // 标题高度
+            separatorMargin: 20,    // 标题到分隔线的间距
+            newsTop: 130,           // 新闻开始Y坐标
+            newsToTipMargin: 40,    // 新闻到微语的间距
+            tipSeparatorMargin: 20, // 微语到分隔线的间距
+            
+            // 底部固定区域（小文字+二维码，高度固定，不变化）
+            bottomFixedHeight: 140, // 底部区域总高度（算死）
+            qr: {
+                size: 100,
+                marginRight: 20,
+                scanText: '扫码查看更多内容',
+                scanTextSize: 14,
+                scanTextGap: 10
+            }
+        };
 
-      // 预加载二维码图片
-      function loadQrCodeImage() {
-        return new Promise((resolve, reject) => {
-          if (!QRCODE_BASE64 || QRCODE_BASE64 === "YOUR_QRCODE_BASE64") {
-            reject(new Error("请先替换二维码的Base64编码（以data:image/png;base64,开头）"));
-            return;
-          }
-          
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error("二维码加载失败，检查Base64是否完整"));
-          img.src = QRCODE_BASE64;
-        });
-      }
-
-      // 下载早报图片函数
-      function downloadNewsImage() {
-        const imgElement = document.querySelector('#newsImageContainer img');
-        if (!imgElement || !imgElement.src) {
-          alert('暂无可用图片可供下载');
-          return;
+        // 预加载二维码图片
+        function loadQrCodeImage() {
+            return new Promise((resolve, reject) => {
+                if (!QRCODE_BASE64 || QRCODE_BASE64 === "YOUR_QRCODE_BASE64") {
+                    reject(new Error("请先替换二维码的Base64编码（以data:image/png;base64,开头）"));
+                    return;
+                }
+                
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error("二维码加载失败，检查Base64是否完整"));
+                img.src = QRCODE_BASE64;
+            });
         }
-        
-        const date = document.getElementById('dateInput').value;
-        const weekStr = getWeekByDateStr(date);
-        const fileName = `${date} ${weekStr} 60秒早报.png`.replace(/\s+/g, '_');
-        
-        const link = document.createElement('a');
-        link.href = imgElement.src;
-        link.download = fileName;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
 
-      // 核心：精准计算画布高度，无多余空白
-      async function drawCustomNewsImage() {
-        const date = document.getElementById('dateInput').value
-        if (!date) {
-          alert('请选择有效的日期')
-          return
+        // 下载早报图片函数
+        function downloadNewsImage() {
+            const imgElement = document.querySelector('#newsImageContainer img');
+            if (!imgElement || !imgElement.src) {
+                alert('暂无可用图片可供下载');
+                return;
+            }
+            
+            const date = document.getElementById('dateInput').value;
+            const weekStr = getWeekByDateStr(date);
+            const fileName = `${date} ${weekStr} 60秒早报.png`.replace(/\s+/g, '_');
+            
+            const link = document.createElement('a');
+            link.href = imgElement.src;
+            link.download = fileName;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
-        
-        const weekStr = getWeekByDateStr(date)
-        const dateWithWeek = weekStr ? `${date} ${weekStr}` : date
-        
-        const container = document.getElementById('newsImageContainer')
-        container.innerHTML = `
-          <div class="text-center py-16 text-stone-500">
-              <svg class="w-8 h-8 mx-auto mb-3 text-amber-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-              </svg>
-              <p>正在生成早报，请稍候...</p>
-          </div>
-        `;
 
-        try {
-          // 1. 预加载二维码
-          const qrImg = await loadQrCodeImage();
-          // 2. 获取新闻数据
-          const jsonUrl = `https://60s-static.viki.moe/60s/${date}.json`
-          const response = await fetch(jsonUrl)
-          if (!response.ok) throw new Error(`接口请求失败${response.status}（该日期暂无数据）`)
-          const newsData = await response.json()
-          if (!newsData || !Array.isArray(newsData.news)) throw new Error('数据格式异常，无新闻列表')
-          newsData.tip = newsData.tip || '心有所向，素履以往'
-          const tipText = `💬 每日微语：${newsData.tip}`
-
-          // 3. Canvas基础配置
-          const canvas = document.getElementById('drawCanvas')
-          const ctx = canvas.getContext('2d')
-          if (!canvas) throw new Error('未找到Canvas画布')
-          if (!ctx) throw new Error('无法获取Canvas绘制上下文')
-          const canvasWidth = 750
-          const paddingX = 50
-          const contentMaxWidth = canvasWidth - paddingX * 2
-          let totalContentHeight = 0 // 唯一画布高度变量
-
-          // 4. 样式配置
-          const style = {
-            titleFont: 'bold 36px PingFang SC, Microsoft YaHei',
-            titleColor: '#854d0e',
-            newsFont: '24px PingFang SC, Microsoft YaHei',
-            newsColor: '#1f2937',
-            tipFont: 'italic 24px PingFang SC, Microsoft YaHei',
-            tipColor: '#d97706',
-            customFont: '16px PingFang SC, Microsoft YaHei',
-            customColor: '#6b7280',
-            lineHeight: 45,
-            bigLineHeight: 60,
-            customLineHeight: 24,
-            titleTop: 70,
-            separatorTop: 90,
-            newsTop: 130
-          }
-
-          // 5. 精准计算画布总高度【核心优化：无多余空白】
-          ctx.font = style.newsFont
-          totalContentHeight = style.newsTop
-          // 5.1 新闻高度（与实际绘制完全一致）
-          for (let i = 0; i < newsData.news.length; i++) {
-            const newsText = `${i + 1}. ${newsData.news[i] || ''}`
-            const testLines = Math.max(1, Math.ceil(ctx.measureText(newsText).width / contentMaxWidth))
-            totalContentHeight += testLines * style.lineHeight + (i < newsData.news.length - 1 ? style.lineHeight : 0)
-          }
-          // 5.2 微语高度（包含分隔线间距）
-          ctx.font = style.tipFont
-          const tipLines = Math.max(1, Math.ceil(ctx.measureText(tipText).width / contentMaxWidth))
-          totalContentHeight += tipLines * style.lineHeight + style.bigLineHeight
-          // 5.3 自定义文字+二维码区域高度（精准计算，仅留10px底部小间距）
-          const qrAreaHeight = Math.max(QRCODE_CONFIG.size, style.customLineHeight * 2) + 10 // 10px底部最小间距
-          totalContentHeight += style.bigLineHeight + qrAreaHeight
-          // 5.4 最小高度兜底（避免内容过少时画布过小）
-          totalContentHeight = Math.max(600, totalContentHeight)
-          canvas.height = totalContentHeight // 画布高度完全贴合内容
-
-          // 6. 开始绘制
-          // 6.1 白色背景
-          ctx.fillStyle = '#ffffff'
-          ctx.fillRect(0, 0, canvasWidth, totalContentHeight)
-          // 6.2 标题
-          ctx.fillStyle = style.titleColor
-          ctx.font = style.titleFont
-          ctx.textAlign = 'center'
-          ctx.fillText(`每日60s早报 · ${dateWithWeek}`, canvasWidth / 2, style.titleTop)
-          // 6.3 标题分隔线
-          ctx.strokeStyle = '#fbbf24'
-          ctx.lineWidth = 2
-          ctx.beginPath()
-          ctx.moveTo(paddingX, style.separatorTop)
-          ctx.lineTo(canvasWidth - paddingX, style.separatorTop)
-          ctx.stroke()
-          // 6.4 新闻列表
-          ctx.fillStyle = style.newsColor
-          ctx.font = style.newsFont
-          ctx.textAlign = 'left'
-          let currentY = style.newsTop
-          for (let i = 0; i < newsData.news.length; i++) {
-            const newsText = `${i + 1}. ${newsData.news[i] || ''}`
-            currentY = drawTextWrap(ctx, newsText, paddingX, currentY, contentMaxWidth, style.lineHeight)
-          }
-          // 6.5 微语
-          ctx.fillStyle = style.tipColor
-          ctx.font = style.tipFont
-          ctx.textAlign = 'left'
-          currentY += style.bigLineHeight / 4
-          currentY = drawTextWrap(ctx, tipText, paddingX, currentY, contentMaxWidth, style.lineHeight)
-          // 微语分隔线
-          ctx.strokeStyle = '#fcd34d'
-          ctx.beginPath()
-          ctx.moveTo(paddingX + 50, currentY + 20)
-          ctx.lineTo(canvasWidth - paddingX - 50, currentY + 20)
-          ctx.stroke()
-          currentY += style.bigLineHeight
-
-          // 7. 自定义文字（左置）
-          ctx.fillStyle = style.customColor
-          ctx.font = style.customFont
-          ctx.textAlign = 'left'
-          const customText1 = '—— 60s新闻早报 · 长按保存'
-          const customText2 = '每日更新 · 数据来源于公开网络'
-          ctx.fillText(customText1, paddingX, currentY)
-          ctx.fillText(customText2, paddingX, currentY + style.customLineHeight)
-
-          // 8. 二维码+扫码文字（无下方空白）
-          const qrX = canvasWidth - QRCODE_CONFIG.size - QRCODE_CONFIG.marginRight
-          // 8.1 二维码Y坐标：与自定义文字垂直居中，底部贴合画布
-          const qrY = currentY - (QRCODE_CONFIG.size - style.customLineHeight * 2) / 2
-          // 8.2 绘制扫码文字
-          ctx.font = `${QRCODE_CONFIG.scanTextSize}px PingFang SC, Microsoft YaHei`
-          ctx.fillStyle = style.customColor
-          const scanTextWidth = ctx.measureText(QRCODE_CONFIG.scanText).width
-          const scanTextX = qrX - scanTextWidth - QRCODE_CONFIG.scanTextGap
-          const scanTextY = qrY + QRCODE_CONFIG.size / 2 + QRCODE_CONFIG.scanTextSize / 3
-          ctx.fillText(QRCODE_CONFIG.scanText, scanTextX, scanTextY)
-          // 8.3 绘制二维码（底部无多余空白）
-          ctx.drawImage(qrImg, qrX, qrY, QRCODE_CONFIG.size, QRCODE_CONFIG.size)
-
-          // 9. 生成图片展示
-          const customImageUrl = canvas.toDataURL('image/png', 1.0)
-          if (!customImageUrl) throw new Error('Canvas转图片失败')
-          container.innerHTML = `
-            <div class="flex flex-col items-center w-full">
-                <div class="bg-stone-50/50 rounded-lg p-4 border border-stone-200 img-wrap w-full">
-                    <img src="${customImageUrl}" alt="${dateWithWeek} 自定义早报" class="w-full h-auto rounded shadow-lg" title="点击保存图片">
+        // 核心：仅新闻+微语动态变高，底部固定无空白
+        async function drawCustomNewsImage() {
+            const date = document.getElementById('dateInput').value
+            if (!date) {
+                alert('请选择有效的日期')
+                return
+            }
+            
+            const weekStr = getWeekByDateStr(date)
+            const dateWithWeek = weekStr ? `${date} ${weekStr}` : date
+            
+            const container = document.getElementById('newsImageContainer')
+            container.innerHTML = `
+                <div class="text-center py-16 text-stone-500">
+                    <svg class="w-8 h-8 mx-auto mb-3 text-amber-400 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <p>正在生成早报，请稍候...</p>
                 </div>
-                <button onclick="downloadNewsImage()" class="mt-6 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg">
-                    下载早报图片
-                </button>
-            </div>
-          `
-        } catch (error) {
-          const errorMsg = error.message || '未知绘制错误'
-          container.innerHTML = `
-            <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center w-full max-w-2xl mx-auto">
-                <p class="text-red-700 mb-2">绘制失败</p>
-                <p class="text-sm text-red-600">${errorMsg}</p>
-            </div>
-          `
-          console.error('绘制错误：', error)
-        }
-      }
+            `;
 
-      // 页面初始化
-      try {
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', init)
-        } else {
-          init()
+            try {
+                // 1. 预加载二维码
+                const qrImg = await loadQrCodeImage();
+                // 2. 获取新闻数据
+                const jsonUrl = `https://60s-static.viki.moe/60s/${date}.json`
+                const response = await fetch(jsonUrl)
+                if (!response.ok) throw new Error(`接口请求失败${response.status}（该日期暂无数据）`)
+                const newsData = await response.json()
+                if (!newsData || !Array.isArray(newsData.news)) throw new Error('数据格式异常，无新闻列表')
+                newsData.tip = newsData.tip || '心有所向，素履以往'
+                const tipText = `💬 每日微语：${newsData.tip}`
+
+                // 3. Canvas基础配置
+                const canvas = document.getElementById('drawCanvas')
+                const ctx = canvas.getContext('2d')
+                if (!canvas) throw new Error('未找到Canvas画布')
+                if (!ctx) throw new Error('无法获取Canvas绘制上下文')
+                const canvasWidth = 750
+                const paddingX = 50
+                const contentMaxWidth = canvasWidth - paddingX * 2
+
+                // 4. 样式配置
+                const style = {
+                    titleFont: 'bold 36px PingFang SC, Microsoft YaHei',
+                    titleColor: '#854d0e',
+                    newsFont: '24px PingFang SC, Microsoft YaHei',
+                    newsColor: '#1f2937',
+                    tipFont: 'italic 24px PingFang SC, Microsoft YaHei',
+                    tipColor: '#d97706',
+                    customFont: '16px PingFang SC, Microsoft YaHei',
+                    customColor: '#6b7280',
+                    newsLineHeight: 45,
+                    tipLineHeight: 45
+                }
+
+                // 5. 精准计算动态高度（仅新闻+微语）
+                ctx.font = style.newsFont
+                // 5.1 新闻动态高度（包含每条新闻间距）
+                let newsBottomY = FIXED_CONFIG.newsTop
+                for (let i = 0; i < newsData.news.length; i++) {
+                    const newsText = `${i + 1}. ${newsData.news[i] || ''}`
+                    // 绘制新闻并获取底部Y坐标
+                    newsBottomY = drawTextWrap(ctx, newsText, paddingX, newsBottomY, contentMaxWidth, style.newsLineHeight)
+                    // 新闻之间加间距（最后一条不加）
+                    if (i < newsData.news.length - 1) newsBottomY += style.newsLineHeight / 2
+                }
+
+                // 5.2 微语动态高度（文字换行后的总高度）
+                ctx.font = style.tipFont
+                const tipStartY = newsBottomY + FIXED_CONFIG.newsToTipMargin
+                const tipBottomY = drawTextWrap(ctx, tipText, paddingX, tipStartY, contentMaxWidth, style.tipLineHeight)
+
+                // 5.3 画布总高度 = 顶部固定 + 新闻动态 + 微语动态 + 底部固定（无任何冗余）
+                const canvasTotalHeight = tipBottomY + FIXED_CONFIG.tipSeparatorMargin + FIXED_CONFIG.bottomFixedHeight
+                canvas.width = canvasWidth
+                canvas.height = canvasTotalHeight // 高度完全贴合所有内容，二维码下方无空白
+
+                // 6. 重新绘制所有内容（按计算好的位置精准绘制）
+                // 6.1 白色背景
+                ctx.fillStyle = '#ffffff'
+                ctx.fillRect(0, 0, canvasWidth, canvasTotalHeight)
+
+                // 6.2 固定区域：标题
+                ctx.fillStyle = style.titleColor
+                ctx.font = style.titleFont
+                ctx.textAlign = 'center'
+                ctx.fillText(`每日60s早报 · ${dateWithWeek}`, canvasWidth / 2, FIXED_CONFIG.titleHeight)
+
+                // 6.3 固定区域：标题分隔线
+                ctx.strokeStyle = '#fbbf24'
+                ctx.lineWidth = 2
+                ctx.beginPath()
+                ctx.moveTo(paddingX, FIXED_CONFIG.titleHeight + FIXED_CONFIG.separatorMargin)
+                ctx.lineTo(canvasWidth - paddingX, FIXED_CONFIG.titleHeight + FIXED_CONFIG.separatorMargin)
+                ctx.stroke()
+
+                // 6.4 动态区域：新闻列表
+                ctx.fillStyle = style.newsColor
+                ctx.font = style.newsFont
+                ctx.textAlign = 'left'
+                let currentY = FIXED_CONFIG.newsTop
+                for (let i = 0; i < newsData.news.length; i++) {
+                    const newsText = `${i + 1}. ${newsData.news[i] || ''}`
+                    currentY = drawTextWrap(ctx, newsText, paddingX, currentY, contentMaxWidth, style.newsLineHeight)
+                    if (i < newsData.news.length - 1) currentY += style.newsLineHeight / 2
+                }
+
+                // 6.5 动态区域：微语
+                ctx.fillStyle = style.tipColor
+                ctx.font = style.tipFont
+                ctx.textAlign = 'left'
+                drawTextWrap(ctx, tipText, paddingX, tipStartY, contentMaxWidth, style.tipLineHeight)
+
+                // 6.6 固定区域：微语分隔线
+                const tipSeparatorY = tipBottomY + FIXED_CONFIG.tipSeparatorMargin
+                ctx.strokeStyle = '#fcd34d'
+                ctx.beginPath()
+                ctx.moveTo(paddingX + 50, tipSeparatorY)
+                ctx.lineTo(canvasWidth - paddingX - 50, tipSeparatorY)
+                ctx.stroke()
+
+                // 6.7 固定区域：底部小文字+二维码（位置固定，紧贴分隔线，无空白）
+                const bottomAreaStartY = tipSeparatorY + 20 // 分隔线下方20px开始
+                // 底部小文字（固定位置）
+                ctx.fillStyle = style.customColor
+                ctx.font = style.customFont
+                ctx.textAlign = 'left'
+                const customText1 = '—— 60s新闻早报 · 长按保存'
+                const customText2 = '每日更新 · 数据来源于公开网络'
+                ctx.fillText(customText1, paddingX, bottomAreaStartY)
+                ctx.fillText(customText2, paddingX, bottomAreaStartY + style.customFont.split(' ')[0])
+
+                // 二维码（固定位置：底部右侧，与文字垂直居中，下方无空白）
+                const qrX = canvasWidth - FIXED_CONFIG.qr.size - FIXED_CONFIG.qr.marginRight
+                const qrY = bottomAreaStartY - (FIXED_CONFIG.qr.size - 40) / 2 // 40=两行文字高度，垂直居中
+                // 扫码提示文字（固定位置）
+                ctx.font = `${FIXED_CONFIG.qr.scanTextSize}px PingFang SC, Microsoft YaHei`
+                const scanTextWidth = ctx.measureText(FIXED_CONFIG.qr.scanText)
+                const scanTextX = qrX - scanTextWidth.width - FIXED_CONFIG.qr.scanTextGap
+                const scanTextY = qrY + FIXED_CONFIG.qr.size / 2 + FIXED_CONFIG.qr.scanTextSize / 3
+                ctx.fillText(FIXED_CONFIG.qr.scanText, scanTextX, scanTextY)
+                // 绘制二维码（固定位置，底部紧贴画布边缘，无空白）
+                ctx.drawImage(qrImg, qrX, qrY, FIXED_CONFIG.qr.size, FIXED_CONFIG.qr.size)
+
+                // 7. 生成图片展示
+                const customImageUrl = canvas.toDataURL('image/png', 1.0)
+                if (!customImageUrl) throw new Error('Canvas转图片失败')
+                container.innerHTML = `
+                    <div class="flex flex-col items-center w-full">
+                        <div class="bg-stone-50/50 rounded-lg p-4 border border-stone-200 img-wrap w-full">
+                            <img src="${customImageUrl}" alt="${dateWithWeek} 自定义早报" class="w-full h-auto rounded shadow-lg" title="点击保存图片">
+                        </div>
+                        <button onclick="downloadNewsImage()" class="mt-6 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg">
+                            下载早报图片
+                        </button>
+                    </div>
+                `
+            } catch (error) {
+                const errorMsg = error.message || '未知绘制错误'
+                container.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center w-full max-w-2xl mx-auto">
+                        <p class="text-red-700 mb-2">绘制失败</p>
+                        <p class="text-sm text-red-600">${errorMsg}</p>
+                    </div>
+                `
+                console.error('绘制错误：', error)
+            }
         }
-      } catch (initError) {
-        console.error('初始化错误：', initError)
-        alert('页面初始化失败，请刷新重试')
-      }
+
+        // 页面初始化
+        try {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init)
+            } else {
+                init()
+            }
+        } catch (initError) {
+            console.error('初始化错误：', initError)
+            alert('页面初始化失败，请刷新重试')
+        }
     </script>
-  </body>
+</body>
 </html>
