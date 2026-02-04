@@ -165,7 +165,7 @@
           const paramDate = new Date(dateParam)
           const todayDate = new Date(todayStr)
           if (paramDate <= todayDate && !isNaN(paramDate.getTime())) {
-            initialDate = dateParam
+            initialDate = paramDate
           }
         }
         
@@ -254,7 +254,7 @@
         }
         
         ctx.fillText(curText, x, curY)
-        return curY
+        return curY + _lineHeight // 修复：返回换行后的下一行起始Y，避免额外叠加行高
       }
 
       // ====================== 二维码配置（仅需替换这里的Base64）======================
@@ -368,22 +368,22 @@
             newsTop: 130
           }
 
-          // 5. 预计算画布总高度【核心：无底部空白，精准计算】
+          // 5. 预计算画布总高度【核心修复：补全所有区域高度，无遗漏】
           ctx.font = style.newsFont
           totalContentHeight = style.newsTop
-          // 计算新闻高度
+          // 修复1：新闻高度预计算，与实际绘制逻辑一致（包含每条新闻末尾的行高）
           for (let i = 0; i < newsData.news.length; i++) {
             const newsText = `${i + 1}. ${newsData.news[i] || ''}`
             const testLines = Math.max(1, Math.ceil(ctx.measureText(newsText).width / contentMaxWidth))
-            totalContentHeight += testLines * style.lineHeight
+            totalContentHeight += testLines * style.lineHeight + (i < newsData.news.length - 1 ? style.lineHeight : 0)
           }
-          // 计算微语高度
+          // 修复2：微语高度预计算，包含分隔线和间距
           ctx.font = style.tipFont
           const tipLines = Math.max(1, Math.ceil(ctx.measureText(tipText).width / contentMaxWidth))
-          totalContentHeight += tipLines * style.lineHeight + style.bigLineHeight / 2
-          // 计算自定义区高度（无任何底部留白，精准贴合）
-          totalContentHeight += style.bigLineHeight + style.customLineHeight * 2
-          totalContentHeight = Math.max(600, totalContentHeight) // 兜底最小高度
+          totalContentHeight += tipLines * style.lineHeight + style.bigLineHeight
+          // 修复3：自定义文字+二维码区域高度（明确纳入，留足安全间距）
+          totalContentHeight += style.bigLineHeight + style.customLineHeight * 2 + QRCODE_CONFIG.size + 40 // 40为二维码安全间距
+          totalContentHeight = Math.max(800, totalContentHeight) // 兜底最小高度，确保二维码有足够显示空间
           canvas.height = totalContentHeight
 
           // 6. 开始绘制内容
@@ -407,10 +407,10 @@
           ctx.font = style.newsFont
           ctx.textAlign = 'left'
           let currentY = style.newsTop
+          // 优化：更新currentY逻辑，与预计算一致，无额外误差
           for (let i = 0; i < newsData.news.length; i++) {
             const newsText = `${i + 1}. ${newsData.news[i] || ''}`
             currentY = drawTextWrap(ctx, newsText, paddingX, currentY, contentMaxWidth, style.lineHeight)
-            currentY += style.lineHeight
           }
           // 6.5 微语
           ctx.fillStyle = style.tipColor
@@ -435,10 +435,13 @@
           ctx.fillText(customText1, paddingX, currentY)
           ctx.fillText(customText2, paddingX, currentY + style.customLineHeight)
 
-          // 8. 绘制二维码+左侧扫码小字【核心新增：垂直居中+同色小字体】
+          // 8. 绘制二维码+左侧扫码小字【核心修复：确保二维码在画布内，不被挤出】
           const qrX = canvasWidth - QRCODE_CONFIG.size - QRCODE_CONFIG.marginRight
-          // 二维码Y坐标：与自定义两行文字垂直居中
-          const qrY = currentY - (QRCODE_CONFIG.size - style.customLineHeight * 2) / 2
+          // 修复4：二维码Y坐标限制在画布内，留足底部安全间距
+          const qrY = Math.min(
+            currentY - (QRCODE_CONFIG.size - style.customLineHeight * 2) / 2,
+            totalContentHeight - QRCODE_CONFIG.size - 20 // 20为底部安全间距，防止超出画布
+          )
           // 绘制扫码小字
           ctx.font = `${QRCODE_CONFIG.scanTextSize}px PingFang SC, Microsoft YaHei`
           ctx.fillStyle = style.customColor
@@ -446,7 +449,7 @@
           const scanTextX = qrX - scanTextWidth - QRCODE_CONFIG.scanTextGap
           const scanTextY = qrY + QRCODE_CONFIG.size / 2 + QRCODE_CONFIG.scanTextSize / 3 // 文字垂直居中
           ctx.fillText(QRCODE_CONFIG.scanText, scanTextX, scanTextY)
-          // 绘制二维码
+          // 绘制二维码（确保在画布内）
           ctx.drawImage(qrImg, qrX, qrY, QRCODE_CONFIG.size, QRCODE_CONFIG.size)
 
           // 9. 转换为图片展示（新增：添加下载按钮）
