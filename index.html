@@ -75,6 +75,17 @@
         justify-content: center;
         align-items: center;
       }
+      /* 新增：底部超链接样式优化 */
+      footer a {
+        color: inherit; /* 继承父元素颜色，保持视觉统一 */
+        text-decoration: none; /* 去掉默认下划线 */
+        font-weight: 500;
+        transition: color 0.3s ease;
+      }
+      footer a:hover {
+        color: #d97706; /* hover时变为主题色，提示可点击 */
+        text-decoration: underline; /* hover显示下划线 */
+      }
     </style>
   </head>
   <body class="bg-gradient-to-br from-amber-50 via-stone-50 to-amber-100 min-h-screen">
@@ -97,7 +108,7 @@
             每天<span class="text-amber-700">60s</span>读懂世界
           </h1>
           <p class="text-base md:text-lg text-stone-600 tracking-widest font-light mb-4">
-            精选每日要闻 · 日期可选
+            精选每日新闻早餐 · 数据来自公开网络
           </p>
           <div class="flex items-center justify-center gap-4 text-sm text-stone-500">
             <span id="currentDate" class="tracking-wide"></span>
@@ -140,7 +151,8 @@
           <div class="w-1 h-1 bg-amber-400 rounded-full"></div>
           <div class="w-12 h-px bg-gradient-to-l from-transparent via-amber-400 to-transparent"></div>
         </div>
-        <p class="text-sm tracking-wide">公众号：资源鉴 ❋ 数据来源于公开网络</p>
+        <!-- 关键修改：将“数据来源于公开网络”改为超链接 -->
+        <p class="text-sm tracking-wide">公众号：资源鉴 ❋ <a href="https://resgo.cc/" target="_blank">访问官方网站</a></p>
         <div class="flex items-center justify-center gap-2 mt-3">
           <div class="w-12 h-px bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
           <div class="w-0.5 h-0.5 bg-amber-400 rounded-full"></div>
